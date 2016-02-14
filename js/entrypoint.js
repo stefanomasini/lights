@@ -3,28 +3,36 @@ import ReactDOM from 'react-dom';
 import { createModel } from './animation';
 
 const BLOCK_SIZE = 6;
-const PADDING = 4;
-const ROWS_DISTANCE = 30;
+const PADDING = 6;
+const ROWS_DISTANCE = 6;
 
 
-var rows = createModel();
+var [rows, pushButton] = createModel();
 
-let updateView = renderWithReact(rows);
+let updateView = renderWithReact(rows, pushButton);
 const FPS = 60;
 setInterval(updateView, 1000 / FPS);
 
 
 // ---- React rendering --------------------------------------
 
-function renderWithReact(rows) {
+function renderWithReact(rows, pushButton) {
     let mainEl = document.getElementById('main');
 
     var _forceUpdate = null;
 
     class Main extends Component {
         render() {
-            return <div>
-                <button className="btn" onClick={() => this.onClick()}>Button</button>
+            return <div onKeyDown={e => {
+                    if (e.keyCode === 49) {
+                        pushButton(0);
+                    }
+                    if (e.keyCode === 48) {
+                        pushButton(1);
+                    }
+                }}>
+                <button className="btn" onClick={() => pushButton(0)}>Button</button>
+                <button className="btn" onClick={() => pushButton(1)}>Button</button>
                 <div style={{marginTop: 20}}>
                     {rows.map((row, rowIdx) => <Row key={rowIdx} cells={row}/>)}
                 </div>
@@ -35,10 +43,6 @@ function renderWithReact(rows) {
             _forceUpdate = () => {
                 this.forceUpdate();
             }
-        }
-
-        onClick() {
-            console.log('foo');
         }
     }
 
