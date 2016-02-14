@@ -3,20 +3,19 @@ import ReactDOM from 'react-dom';
 import { createModel } from './animation';
 
 const BLOCK_SIZE = 6;
-const PADDING = 6;
-const ROWS_DISTANCE = 6;
+const PADDING = 8;
+const ROWS_DISTANCE = 8;
 
 
-var [rows, pushButton] = createModel();
+var {matrix, pushButton, setText} = createModel();
 
-let updateView = renderWithReact(rows, pushButton);
 const FPS = 60;
-setInterval(updateView, 1000 / FPS);
+renderWithReact(matrix.rows, pushButton, FPS);
 
 
 // ---- React rendering --------------------------------------
 
-function renderWithReact(rows, pushButton) {
+function renderWithReact(rows, pushButton, redrawRate) {
     let mainEl = document.getElementById('main');
 
     var _forceUpdate = null;
@@ -33,6 +32,7 @@ function renderWithReact(rows, pushButton) {
                 }}>
                 <button className="btn" onClick={() => pushButton(0)}>Button</button>
                 <button className="btn" onClick={() => pushButton(1)}>Button</button>
+                <input type="text" onChange={e => setText(e.target.value)}/>
                 <div style={{marginTop: 20}}>
                     {rows.map((row, rowIdx) => <Row key={rowIdx} cells={row}/>)}
                 </div>
@@ -84,6 +84,5 @@ function renderWithReact(rows, pushButton) {
     }
 
     ReactDOM.render(<Main rows={rows}/>, mainEl);
-
-    return () => _forceUpdate && _forceUpdate();
+    setInterval(() => { _forceUpdate && _forceUpdate() }, 1000 / redrawRate)
 }
