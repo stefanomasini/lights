@@ -1,6 +1,6 @@
-import { createModel } from './animation';
 import ws281x from 'rpi-ws281x-native';
-import rgb2Int from './color';
+import { createModel } from '../../js/animation';
+import { rgb2Int } from '../../js/color';
 
 
 const FPS = 60;
@@ -17,12 +17,14 @@ const NUM_LEDS_PER_ROLL = 150;
 var pixelDataA = new Uint32Array(NUM_LEDS_PER_ROLL);
 var pixelDataB = new Uint32Array(NUM_LEDS_PER_ROLL);
 
+console.log('initializing');
 ws281x.init(NUM_LEDS_PER_ROLL, {
     gpioPin: GPIO_PIN_ROLL_A,
     brightness: BRIGHTNESS,
 });
 
 process.on('SIGINT', () => {
+    console.log('quitting');
     ws281x.reset();
     process.nextTick(() => { process.exit(0); });
 });
@@ -42,6 +44,7 @@ function drawLeds() {
         }
     });
     ws281x.render(pixelDataA);
+    console.log('rendered');
 }
 
 setInterval(drawLeds, 1000 / FPS);
