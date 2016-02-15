@@ -1,0 +1,11 @@
+{
+  "name": "lights-raspi",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "webpack-dev-server --progress --color --port 8000"
+  },
+  "author": "Stefano Masini",
+  "license": "ISC",
+  "dependencies": {
+  }
+}

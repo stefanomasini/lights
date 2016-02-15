@@ -33,3 +33,8 @@ export function hslToRgb(h, s, l) {
 
     return [r, g, b];
 }
+
+
+export function rgb2Int(r, g, b) {
+  return (((r * 255) & 0xff) << 16) + (((g * 255) & 0xff) << 8) + ((b * 255) & 0xff);
+}

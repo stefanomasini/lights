@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
-import { createModel } from './animation';
+import { createModel } from '../../js/animation';
 
 const BLOCK_SIZE = 6;
 const PADDING = 8;
@@ -84,5 +84,5 @@ function renderWithReact(rows, pushButton, redrawRate) {
     }
 
     ReactDOM.render(<Main rows={rows}/>, mainEl);
-    setInterval(() => { _forceUpdate && _forceUpdate() }, 1000 / redrawRate)
+    setInterval(() => { _forceUpdate && _forceUpdate() }, 1000 / redrawRate);
 }
