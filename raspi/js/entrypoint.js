@@ -7,7 +7,7 @@ const FPS = 60;
 
 const BRIGHTNESS = 255; // [0, 255]
 const GPIO_PIN_ROLL_A = 18;
-const GPIO_PIN_ROLL_B = 20;
+const GPIO_PIN_ROLL_B = 12;
 
 var {matrix, pushButton, setText} = createModel();
 
