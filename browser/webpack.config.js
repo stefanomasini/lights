@@ -7,11 +7,11 @@ module.exports = {
         "main": "./js/entrypoint"
     },
     output: {
-        path: 'dist',
+        path: path.resolve(__dirname, '..', 'dist'),
         publicPath: '/',
         filename: '[name].js'
     },
-    devtool: 'source-map',
+    //devtool: 'source-map',
     module: {
         loaders: [{
             loader: 'babel-loader',

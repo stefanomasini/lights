@@ -1,8 +1,6 @@
 import { hslToRgb } from './color';
 import { scanChar } from './text';
 
-const NUM_ROWS = 10;
-const ROW_LENGTH = 30;
 
 class Led {
     constructor() {
@@ -23,14 +21,14 @@ class Led {
     }
 }
 
-class LedMatrix {
+export class LedMatrix {
     constructor(numRows, numCols, rows) {
         this.numRows = numRows;
         this.numCols = numCols;
         if (rows) {
             this.rows = rows;
         } else {
-            this.rows = times(NUM_ROWS, () => times(ROW_LENGTH, () => new Led()));
+            this.rows = times(numRows, () => times(numCols, () => new Led()));
         }
     }
 
@@ -68,7 +66,7 @@ function times(n, fn) {
     return res;
 }
 
-function range(from, to) {
+export function range(from, to) {
     var res = [];
     for (var i=from; i < to; i += 1) {
         res.push(i);
@@ -77,7 +75,7 @@ function range(from, to) {
 }
 
 
-class SpeedBars {
+export class SpeedBars {
     static BAR_BACK_PRESSURE = 0.1; // Every sec
 
     constructor(maxBarA, barA, barB, maxBarB) {
@@ -119,7 +117,7 @@ class SpeedBars {
 }
 
 
-class OscilatingBar {
+export class OscilatingBar {
     static REV_PER_SEC = 0.5;
     static HUES_PER_SEC = 0.05;
     static BAR_WIDTH = 0.2;
@@ -142,7 +140,7 @@ class OscilatingBar {
 }
 
 
-class ScrollingText {
+export class ScrollingText {
     static CHAR_PER_SEC = 3;
     static NUM_COLS_PER_CHAR = 6;
 
@@ -181,37 +179,15 @@ class ScrollingText {
 }
 
 
-export function createModel() {
-    let matrix = new LedMatrix(NUM_ROWS, ROW_LENGTH);
-
+export function runApps(apps) {
     let start = new Date().getTime();
     var lastTickElapsed = 0;
-    var speedBars = new SpeedBars(
-        matrix.submatrix([0], range(0, matrix.numCols)),
-        matrix.submatrix([1,2,3], range(0, matrix.numCols)),
-        matrix.submatrix([6,7,8], range(0, matrix.numCols)),
-        matrix.submatrix([9], range(0, matrix.numCols)),
-    );
-    var scrollingText = new ScrollingText(matrix.submatrix([2,3,4,5,6,7,8], range(0, matrix.numCols)));
-    let apps = [
-        //speedBars,
-        new OscilatingBar(matrix.submatrix([0,1,9], range(0, matrix.numCols))),
-        scrollingText,
-    ]
     function tick() {
         let now = new Date().getTime();
         let elapsed = now - start;
         let elapsedInThisTick = elapsed - lastTickElapsed;
-
         apps.forEach(app => app.tick(elapsed, elapsedInThisTick));
-
         lastTickElapsed = elapsed;
     }
-
     setInterval(tick, 20);
-    return {
-        matrix,
-        pushButton: btnIdx => speedBars.pushButton(btnIdx),
-        setText: text => scrollingText.setText(text),
-    };
 }
