@@ -7,7 +7,7 @@ module.exports = {
         "main": "./js/entrypoint"
     },
     output: {
-        path: 'dist',
+        path: path.resolve(__dirname, '..', 'dist'),
         publicPath: '/',
         filename: '[name].js'
     },
