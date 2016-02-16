@@ -11,7 +11,7 @@ module.exports = {
         publicPath: '/',
         filename: '[name].js'
     },
-    devtool: 'source-map',
+    //devtool: 'source-map',
     module: {
         loaders: [{
             loader: 'babel-loader',

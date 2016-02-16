@@ -2,7 +2,8 @@
   "name": "lights-browser",
   "version": "1.0.0",
   "scripts": {
-    "start": "webpack-dev-server --progress --color --content-base ../dist/ --port 8000"
+    "start": "webpack-dev-server --progress --color --content-base ../dist/ --port 8000",
+    "build": "webpack --progress --colors"
   },
   "author": "Stefano Masini",
   "license": "ISC",
