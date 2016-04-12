@@ -1,48 +1,79 @@
 import { SerialPort} from 'serialport';
+import { range, LedMatrix, SpeedBars, ScrollingText, OscilatingBar, runApps } from '../../js/animation';
 
+const NUM_ROWS = 10;
+const ROW_LENGTH = 30;
 
-var serialPort = new SerialPort('/dev/ttyUSB0', {
-    baudrate: 115200,
-});
+let matrix = new LedMatrix(NUM_ROWS, ROW_LENGTH);
+
+var scrollingText = new ScrollingText(matrix.submatrix([2,3,4,5,6,7,8], range(0, matrix.numCols)));
+scrollingText.setText('vrijeschool mareland');
+
+runApps([
+    // speedBars,
+    new OscilatingBar(matrix.submatrix([0,1,9], range(0, matrix.numCols))),
+    scrollingText,
+]);
 
 
 
 var NUM_LEDS = 150;
 var BATCH_SIZE = 30;
 var i = 0;
-function generateData(cb) {
-    console.log(i);
+
+function generateCommand() {
     if (i*BATCH_SIZE < NUM_LEDS) {
         var letter = String.fromCharCode(65+i);
         var chunks = [];
         for (var idx=0; idx<BATCH_SIZE; idx += 1) {
-            chunks.push((idx === i) ? 'aaa' : '!!!')
+            var led;
+            if (idx % 2 === 0) {
+                led = matrix.rows[i][idx];
+            } else {
+                // Odd rows are backwards
+                led = matrix.rows[i][BATCH_SIZE-1-idx];
+            }
+            chunks.push(String.fromCharCode(led.r * 63 + 33));
+            chunks.push(String.fromCharCode(led.g * 63 + 33));
+            chunks.push(String.fromCharCode(led.b * 63 + 33));
         }
         var cmd = 'A' + letter + chunks.join('');
-        console.log(cmd);
-        cb(cmd);
         i += 1;
+        return cmd;
     } else {
-        cb('B');
         i = 0;
+        return 'B';
     }
 }
 
-serialPort.on('open', () => {
-    console.log('open');
-    serialPort.on('data', data => {
-        console.log('data received: ' + data);
-        data = `${data}`.trim();
-        if (data.startsWith('OK')) {
-            generateData(data => {
-                serialPort.write(data+'\n', (err, results) => {
-                    if (err) {
-		        console.log('err ' + err);
-                    } else {
-		        console.log('results ' + results);
-                    }
-		});
+
+class SerialAdapter {
+    constructor(device, baudrate) {
+        this.serialPort = new SerialPort(device, { baudrate: baudrate });
+        this.ready = false;
+        serialPort.on('open', () => {
+            console.log('Serial port ready');
+            this.ready = true;
+            serialPort.on('data', data => {
+                // console.log('data received: ' + data);
+                data = `${data}`.trim();
+                if (data.startsWith('OK')) {
+                    var data = generateCommand();
+                    serialPort.write(data+'\n', (err, results) => {
+                        if (err) {
+                            console.log('err ' + err);
+                        // } else {
+                        //     console.log('results ' + results);
+                        }
+                    });
+                }
             });
-        }
-    });
-});
+        });
+    }
+}
+
+var serialAdapter = new SerialAdapter('/dev/ttyUSB0', 115200)
+
+
+
+
