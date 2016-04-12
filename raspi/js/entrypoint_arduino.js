@@ -11,8 +11,8 @@ scrollingText.setText('vrijeschool mareland');
 
 runApps([
     // speedBars,
-    new OscilatingBar(matrix.submatrix([0,1,9], range(0, matrix.numCols))),
-    scrollingText,
+    new OscilatingBar(matrix.submatrix([0,1,2,3,4], range(0, matrix.numCols))),
+    //scrollingText,
 ]);
 
 
@@ -51,15 +51,15 @@ class SerialAdapter {
     constructor(device, baudrate) {
         this.serialPort = new SerialPort(device, { baudrate: baudrate });
         this.ready = false;
-        serialPort.on('open', () => {
+        this.serialPort.on('open', () => {
             console.log('Serial port ready');
             this.ready = true;
-            serialPort.on('data', data => {
+            this.serialPort.on('data', data => {
                 // console.log('data received: ' + data);
                 data = `${data}`.trim();
                 if (data.startsWith('OK')) {
                     var data = generateCommand();
-                    serialPort.write(data+'\n', (err, results) => {
+                    this.serialPort.write(data+'\n', (err, results) => {
                         if (err) {
                             console.log('err ' + err);
                         // } else {
