@@ -1,6 +1,8 @@
 import { SerialPort} from 'serialport';
 import { range, LedMatrix, SpeedBars, ScrollingText, OscilatingBar, runApps } from '../../js/animation';
 
+import i2c from 'i2c-bus';
+
 const NUM_ROWS = 10;
 const ROW_LENGTH = 30;
 
@@ -9,13 +11,19 @@ let matrix = new LedMatrix(NUM_ROWS, ROW_LENGTH);
 var scrollingText = new ScrollingText(matrix.submatrix([2,3,4,5,6,7,8], range(0, matrix.numCols)));
 scrollingText.setText('vrijeschool mareland');
 
+var speedBars = new SpeedBars(
+    matrix.submatrix([0], range(0, matrix.numCols)),
+    matrix.submatrix([1,2,3,4], range(0, matrix.numCols)),
+    matrix.submatrix([5,6,7,8], range(0, matrix.numCols)),
+    matrix.submatrix([9], range(0, matrix.numCols)),
+);
+
+
 runApps([
-    // speedBars,
-    new OscilatingBar(matrix.submatrix([0,1,9], range(0, matrix.numCols))),
-    scrollingText,
+    speedBars,
+    //new OscilatingBar(matrix.submatrix([0,1,9], range(0, matrix.numCols))),
+    //scrollingText,
 ]);
-
-
 
 var NUM_LEDS = 300;
 var BATCH_SIZE = 30;
@@ -46,30 +54,82 @@ function generateCommand() {
     }
 }
 
-
 function handleSerialData(data, writeToSerial) {
     if (data.startsWith('OK')) {
-        writeToSerial(generateCommand());
+        //writeToSerial(generateCommand());
+    } else {
+        //console.log(data);
     }
 }
 
-
 function runSerialPort(device, baudrate) {
-    var serialPort = new SerialPort(device, { baudrate: baudrate });
-    serialPort.on('open', () => {
-        console.log('Serial port open');
-    });
-    serialPort.on('data', data => {
-        data = `${data}`.trim();
-        handleSerialData(data, (dataToWrite) => {
+    return new Promise((resolve, reject) => {
+        var serialPort = new SerialPort(device, { baudrate: baudrate });
+        var writeToSerial = (dataToWrite) => {
             serialPort.write(dataToWrite+'\n', (err, results) => {
                 if (err) {
                     console.log('Error writing data: ' + err.message);
                 }
             });
+        };
+        serialPort.on('open', () => {
+            console.log('Serial port open');
+            resolve(writeToSerial);
         });
+        var dataBuffer = '';
+        serialPort.on('data', data => {
+            dataBuffer += data;
+            var idxOfCr = dataBuffer.indexOf('\n');
+            if (idxOfCr !== -1) {
+                var dataLine = dataBuffer.slice(0, idxOfCr);
+                dataBuffer = dataBuffer.slice(idxOfCr+1);
+                handleSerialData(dataLine, writeToSerial);
+            }
+        });
+        return serialPort;
     });
 }
 
-runSerialPort('/dev/ttyUSB0', 115200);
+runSerialPort('/dev/ttyUSB0', 115200).then(writeToSerial => {
+    setInterval(() => {
+        writeToSerial(generateCommand());
+        while (i !== 0) {
+            writeToSerial(generateCommand());
+        }
+    }, 100);
+});
+
+var SENSOR_DEVICE_ADDR = 0x4;
+
+var bus = i2c.open(1, (err) => {
+    if (err) {
+        console.log(err);
+        return;
+    }
+    function configureSensors(thresholdA, thresholdB, debounceMs) {
+        bus.i2cWrite(SENSOR_DEVICE_ADDR, 8, new Buffer([1, thresholdA, 3, thresholdB, 2, debounceMs, 4, debounceMs]), (err) => {
+            if (err) {
+                console.log(err);
+            }
+        });
+    }
+    configureSensors(10, 6, 20);
+    var buf = new Buffer([0, 0]);
+    function readFromBus() {
+        bus.i2cRead(SENSOR_DEVICE_ADDR, 2, buf, (err, bytesRead) => {
+            if (err) {
+                console.log(err);
+                return;
+            }
+            if (buf[0] === 1) {
+                speedBars.pushButton(0);
+            }
+            if (buf[1] === 1) {
+                speedBars.pushButton(1);
+            }
+        });
+    }
+
+    setInterval(readFromBus, 50);
+});
 

@@ -4,13 +4,19 @@
 #define NUM_PIXELS_PER_STRIP  300
 #define BATCH_LENGTH          30
 #define LAST_BATCH_IDX        (NUM_PIXELS_PER_STRIP/BATCH_LENGTH)-1
+#define PIEZO_LEFT_PIN        A0
+#define PIEZO_LEFT_THRESHOLD  10
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUM_PIXELS_PER_STRIP, LED_STRIP_PIN, NEO_GRB + NEO_KHZ800);
+
+bool piezo_left_high;
 
 void setup() {
   Serial.begin(115200);
   pixels.begin();
   turnOffLedStrips();
+  piezo_left_high = false;
+  Serial.println("READY");
 }
 
 int parseChar(char chVal) {
@@ -59,9 +65,10 @@ void showPixels() {
   Serial.println("OK Show");
 }
 
-
 void loop() {
   char command;
+
+  // Read serial for commands
   while (Serial.available() > 0) {
     str = Serial.readStringUntil('\n');
     // pos 0: command
@@ -78,12 +85,15 @@ void loop() {
       Serial.println(command);
     }
   }
+
+  // Read piezos
+  if (analogRead(PIEZO_LEFT_PIN) > PIEZO_LEFT_THRESHOLD) {
+    if (!piezo_left_high) {
+      Serial.println("CMD P1");
+      piezo_left_high = true;
+    }
+  } else {
+    piezo_left_high = false;
+  }
 }
-
-
-
-
-
-
-
 
