@@ -77,7 +77,7 @@
 	var matrixA = new _animation.LedMatrix(NUM_ROWS, ROW_LENGTH);
 	var matrixB = new _animation.LedMatrix(NUM_ROWS, ROW_LENGTH);
 
-	var speedBars = new _animation.SpeedBars(matrixA.submatrix([0], (0, _animation.range)(0, matrixA.numCols)), matrixA.submatrix([1, 2, 3, 4], (0, _animation.range)(0, matrixA.numCols)), matrixA.submatrix([5, 6, 7, 8], (0, _animation.range)(0, matrixA.numCols)), matrixA.submatrix([9], (0, _animation.range)(0, matrixA.numCols)));
+	var speedBars = new _animation.SpeedBars(matrixA.submatrix([0], (0, _animation.range)(0, matrixA.numCols)), matrixA.submatrix([1, 2], (0, _animation.range)(0, matrixA.numCols)), matrixA.submatrix([3, 4], (0, _animation.range)(0, matrixA.numCols)), matrixA.submatrix([5], (0, _animation.range)(0, matrixA.numCols)));
 
 	var scrollingText = new _animation.ScrollingText(matrixB.submatrix([2, 3, 4, 5, 6, 7, 8], (0, _animation.range)(0, matrixB.numCols)));
 	scrollingText.setText('vrijeschool mareland');
@@ -457,45 +457,159 @@
 	    function SpeedBars(maxBarA, barA, barB, maxBarB) {
 	        _classCallCheck(this, SpeedBars);
 
-	        this.bars = [0, 0];
-	        this.barMax = [0, 0];
+	        var now = new Date().getTime();
 	        this.maxBarA = maxBarA;
 	        this.barA = barA;
 	        this.barB = barB;
 	        this.maxBarB = maxBarB;
+	        this.waitStartedAt = now;
+	        this.state = 'WAIT';
+	        // this.resetRace();
 	    }
 
 	    _createClass(SpeedBars, [{
 	        key: 'tick',
 	        value: function tick(elapsed, elapsedInThisTick) {
+	            var now = new Date().getTime();
+	            if (this.state === 'WAIT') {
+	                this.drawWaitBars(now);
+	            } else if (this.state === 'RACING') {
+	                this.applyInertia(elapsedInThisTick);
+	                this.checkForRaceStop(now);
+	                this.drawRaceBars();
+	            } else if (this.state === 'REWARD') {
+	                if (now - this.rewardStartedAt > 5000) {
+	                    this.endReward(now);
+	                } else {
+	                    this.drawRewardBars(now);
+	                }
+	            }
+	        }
+	    }, {
+	        key: 'drawWaitBars',
+	        value: function drawWaitBars(now) {
+	            var elapsed = now - this.waitStartedAt;
+	            var cycle = elapsed % 6000 / 6000;
+	            [this.barA, this.barB, this.maxBarA, this.maxBarB].forEach(function (bar) {
+	                bar.forEachCell(function (rowIdx, colIdx, led) {
+	                    led.setHSL(cycle, 1, 0.2 + 0.3 * Math.abs(Math.sin(cycle * 7 * Math.PI)));
+	                });
+	            });
+	        }
+	    }, {
+	        key: 'drawRewardBars',
+	        value: function drawRewardBars(now) {
 	            var _this2 = this;
 
+	            var fn = function fn(bar, idx) {
+	                bar.forEachCell(function (rowIdx, colIdx, led) {
+	                    var on = _this2.winner !== idx ? false : (now - _this2.rewardStartedAt) % 200 < 100;
+	                    led.setHSL(0.3, 1, on * 0.5);
+	                });
+	            };
+	            [this.barA, this.barB].forEach(fn);
+	            [this.maxBarA, this.maxBarB].forEach(fn);
+	        }
+	    }, {
+	        key: 'applyInertia',
+	        value: function applyInertia(elapsedInThisTick) {
+	            var _this3 = this;
+
 	            this.bars.forEach(function (bar, barIdx) {
-	                _this2.bars[barIdx] = Math.max(_this2.bars[barIdx] - elapsedInThisTick / 1000 * SpeedBars.BAR_BACK_PRESSURE * _this2.bars[barIdx] * 10, 0);
-	                if (_this2.bars[barIdx] > 0.1) {
-	                    _this2.barMax[barIdx] = Math.max(_this2.barMax[barIdx], _this2.bars[barIdx]);
+	                _this3.bars[barIdx] = Math.max(_this3.bars[barIdx] - elapsedInThisTick / 1000 * SpeedBars.BAR_BACK_PRESSURE * _this3.bars[barIdx] * 10, 0);
+	                if (_this3.bars[barIdx] > 0.1) {
+	                    _this3.barMax[barIdx] = Math.max(_this3.barMax[barIdx], _this3.bars[barIdx]);
+	                    _this3.stoppedAt = null;
 	                } else {
-	                    _this2.barMax[barIdx] = 0;
+	                    _this3.barMax[barIdx] = 0;
 	                }
 	            });
+	        }
+	    }, {
+	        key: 'startRace',
+	        value: function startRace() {
+	            console.log('startRace');
+	            this.bars = [0, 0];
+	            this.barMax = [0, 0];
+	            this.raceStarted = true;
+	            this.stoppedAt = null;
+	            this.space = [0, 0];
+	            this.winner = null;
+	            this.state = 'RACING';
+	        }
+	    }, {
+	        key: 'checkForRaceStop',
+	        value: function checkForRaceStop(now) {
+	            var stopped = [this.barMax[0] === 0, this.barMax[1] === 0];
+	            if (this.raceStarted && stopped[0] && stopped[1] && !this.stoppedAt) {
+	                this.stoppedAt = now;
+	            }
+	            if (this.stoppedAt && now - this.stoppedAt > 3000) {
+	                this.endRace(now);
+	            }
+	        }
+	    }, {
+	        key: 'drawRaceBars',
+	        value: function drawRaceBars() {
+	            var _this4 = this;
+
 	            [this.barA, this.barB].forEach(function (bar, idx) {
 	                bar.forEachCell(function (rowIdx, colIdx, led) {
-	                    var barSize = _this2.bars[idx];
+	                    var barSize = _this4.bars[idx];
 	                    var on = colIdx / bar.numCols < barSize ? 1 : 0;
-	                    led.setHSL((1 - barSize) / 3, 1, on * barSize * 1.3);
+	                    led.setHSL((1 - barSize) / 3, 1, on * barSize * 1.2);
 	                });
 	            });
 	            [this.maxBarA, this.maxBarB].forEach(function (maxBar, idx) {
 	                maxBar.forEachCell(function (rowIdx, colIdx, led) {
-	                    var on = colIdx / maxBar.numCols < _this2.barMax[idx] ? 1 : 0;
+	                    // const on = ((colIdx / maxBar.numCols) < this.barMax[idx]) ? 1 : 0;
+	                    var on = colIdx / maxBar.numCols < _this4.space[idx] ? 1 : 0;
 	                    led.setHSL(0, 1, on * 0.5);
 	                });
 	            });
 	        }
 	    }, {
+	        key: 'winRace',
+	        value: function winRace(now, winnerIdx) {
+	            this.winner = winnerIdx;
+	            this.endRace(now);
+	        }
+	    }, {
+	        key: 'endRace',
+	        value: function endRace(now) {
+	            console.log('endRace');
+	            this.raceStarted = false;
+	            this.stoppedAt = null;
+	            this.space = [0, 0];
+	            if (this.winner !== null) {
+	                this.rewardStartedAt = now;
+	                this.state = 'REWARD';
+	            } else {
+	                this.waitStartedAt = now;
+	                this.state = 'WAIT';
+	            }
+	        }
+	    }, {
+	        key: 'endReward',
+	        value: function endReward(now) {
+	            this.waitStartedAt = now;
+	            this.state = 'WAIT';
+	        }
+	    }, {
 	        key: 'pushButton',
 	        value: function pushButton(btnIdx) {
-	            this.bars[btnIdx] += 0.1;
+	            var now = new Date().getTime();
+	            if (this.state === 'WAIT') {
+	                this.startRace();
+	            }
+	            if (this.raceStarted) {
+	                this.bars[btnIdx] += 0.1;
+	                this.space[btnIdx] += 0.02;
+	                if (this.space[btnIdx] > 1) {
+	                    this.space[btnIdx] = 1;
+	                    this.winRace(now, btnIdx);
+	                }
+	            }
 	        }
 	    }]);
 
@@ -511,13 +625,13 @@
 	    _createClass(OscilatingBar, [{
 	        key: 'tick',
 	        value: function tick(elapsed, elapsedInThisTick) {
-	            var _this3 = this;
+	            var _this5 = this;
 
 	            var pos = (1 - Math.sin(OscilatingBar.REV_PER_SEC * elapsed / 1000 * Math.PI * 2)) / 2;
 	            var hue = (1 - Math.sin(OscilatingBar.HUES_PER_SEC * elapsed / 1000 * Math.PI * 2)) / 2;
 
 	            this.matrix.forEachCell(function (rowIdx, colIdx, led) {
-	                var ledPos = colIdx / (_this3.matrix.numCols - 1);
+	                var ledPos = colIdx / (_this5.matrix.numCols - 1);
 	                var dist = Math.abs(ledPos - pos);
 	                var intensity = Math.max(OscilatingBar.BAR_WIDTH - dist, 0) / OscilatingBar.BAR_WIDTH;
 	                led.setHSL(hue, 1, intensity * 0.5);
@@ -539,7 +653,7 @@
 	    _createClass(ScrollingText, [{
 	        key: 'tick',
 	        value: function tick(elapsed, elapsedInThisTick) {
-	            var _this4 = this;
+	            var _this6 = this;
 
 	            this.matrix.fillRGB(0, 0, 0);
 	            this.scrollFloat += ScrollingText.CHAR_PER_SEC * ScrollingText.NUM_COLS_PER_CHAR * elapsedInThisTick / 1000;
@@ -554,8 +668,8 @@
 	                    (0, _text.scanChar)(char, function (rowIdx, colIdx, value) {
 	                        var charScroll = scroll % ScrollingText.NUM_COLS_PER_CHAR;
 	                        var actualColIdx = colIdx + charIdx * ScrollingText.NUM_COLS_PER_CHAR - charScroll;
-	                        if (actualColIdx >= 0 && actualColIdx < _this4.matrix.numCols && rowIdx >= 0 && rowIdx < _this4.matrix.numRows) {
-	                            _this4.matrix.ledAt(rowIdx, actualColIdx).setRGB(value, value, value);
+	                        if (actualColIdx >= 0 && actualColIdx < _this6.matrix.numCols && rowIdx >= 0 && rowIdx < _this6.matrix.numRows) {
+	                            _this6.matrix.ledAt(rowIdx, actualColIdx).setRGB(value, value, value);
 	                        }
 	                    });
 	                }
@@ -2432,7 +2546,7 @@
 
 	'use strict';
 
-	var ReactRef = __webpack_require__(58);
+	var ReactRef = __webpack_require__(61);
 
 	/**
 	 * Helper to call ReactRef.attachRefs with this composite component, split out
@@ -2544,11 +2658,11 @@
 
 	'use strict';
 
-	var CallbackQueue = __webpack_require__(59);
-	var PooledClass = __webpack_require__(60);
+	var CallbackQueue = __webpack_require__(58);
+	var PooledClass = __webpack_require__(59);
 	var ReactPerf = __webpack_require__(13);
 	var ReactReconciler = __webpack_require__(14);
-	var Transaction = __webpack_require__(61);
+	var Transaction = __webpack_require__(60);
 
 	var assign = __webpack_require__(21);
 	var invariant = __webpack_require__(73);
@@ -3224,7 +3338,7 @@
 	var DOMProperty = __webpack_require__(47);
 	var ReactPerf = __webpack_require__(13);
 
-	var quoteAttributeValueForBrowser = __webpack_require__(79);
+	var quoteAttributeValueForBrowser = __webpack_require__(78);
 	var warning = __webpack_require__(71);
 
 	// Simplified subset
@@ -3451,7 +3565,7 @@
 
 	'use strict';
 
-	var ReactDOMIDOperations = __webpack_require__(78);
+	var ReactDOMIDOperations = __webpack_require__(79);
 	var ReactMount = __webpack_require__(12);
 
 	/**
@@ -5157,7 +5271,7 @@
 	'use strict';
 
 	var ReactUpdates = __webpack_require__(15);
-	var Transaction = __webpack_require__(61);
+	var Transaction = __webpack_require__(60);
 
 	var assign = __webpack_require__(21);
 	var emptyFunction = __webpack_require__(80);
@@ -6199,7 +6313,7 @@
 
 	var EventListener = __webpack_require__(103);
 	var ExecutionEnvironment = __webpack_require__(72);
-	var PooledClass = __webpack_require__(60);
+	var PooledClass = __webpack_require__(59);
 	var ReactInstanceHandles = __webpack_require__(11);
 	var ReactMount = __webpack_require__(12);
 	var ReactUpdates = __webpack_require__(15);
@@ -6456,12 +6570,12 @@
 
 	'use strict';
 
-	var CallbackQueue = __webpack_require__(59);
-	var PooledClass = __webpack_require__(60);
+	var CallbackQueue = __webpack_require__(58);
+	var PooledClass = __webpack_require__(59);
 	var ReactBrowserEventEmitter = __webpack_require__(48);
 	var ReactDOMFeatureFlags = __webpack_require__(49);
 	var ReactInputSelection = __webpack_require__(108);
-	var Transaction = __webpack_require__(61);
+	var Transaction = __webpack_require__(60);
 
 	var assign = __webpack_require__(21);
 
@@ -9363,89 +9477,6 @@
 /* 58 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/**
-	 * Copyright 2013-2015, Facebook, Inc.
-	 * All rights reserved.
-	 *
-	 * This source code is licensed under the BSD-style license found in the
-	 * LICENSE file in the root directory of this source tree. An additional grant
-	 * of patent rights can be found in the PATENTS file in the same directory.
-	 *
-	 * @providesModule ReactRef
-	 */
-
-	'use strict';
-
-	var ReactOwner = __webpack_require__(125);
-
-	var ReactRef = {};
-
-	function attachRef(ref, component, owner) {
-	  if (typeof ref === 'function') {
-	    ref(component.getPublicInstance());
-	  } else {
-	    // Legacy ref
-	    ReactOwner.addComponentAsRefTo(component, ref, owner);
-	  }
-	}
-
-	function detachRef(ref, component, owner) {
-	  if (typeof ref === 'function') {
-	    ref(null);
-	  } else {
-	    // Legacy ref
-	    ReactOwner.removeComponentAsRefFrom(component, ref, owner);
-	  }
-	}
-
-	ReactRef.attachRefs = function (instance, element) {
-	  if (element === null || element === false) {
-	    return;
-	  }
-	  var ref = element.ref;
-	  if (ref != null) {
-	    attachRef(ref, instance, element._owner);
-	  }
-	};
-
-	ReactRef.shouldUpdateRefs = function (prevElement, nextElement) {
-	  // If either the owner or a `ref` has changed, make sure the newest owner
-	  // has stored a reference to `this`, and the previous owner (if different)
-	  // has forgotten the reference to `this`. We use the element instead
-	  // of the public this.props because the post processing cannot determine
-	  // a ref. The ref conceptually lives on the element.
-
-	  // TODO: Should this even be possible? The owner cannot change because
-	  // it's forbidden by shouldUpdateReactComponent. The ref can change
-	  // if you swap the keys of but not the refs. Reconsider where this check
-	  // is made. It probably belongs where the key checking and
-	  // instantiateReactComponent is done.
-
-	  var prevEmpty = prevElement === null || prevElement === false;
-	  var nextEmpty = nextElement === null || nextElement === false;
-
-	  return(
-	    // This has a few false positives w/r/t empty components.
-	    prevEmpty || nextEmpty || nextElement._owner !== prevElement._owner || nextElement.ref !== prevElement.ref
-	  );
-	};
-
-	ReactRef.detachRefs = function (instance, element) {
-	  if (element === null || element === false) {
-	    return;
-	  }
-	  var ref = element.ref;
-	  if (ref != null) {
-	    detachRef(ref, instance, element._owner);
-	  }
-	};
-
-	module.exports = ReactRef;
-
-/***/ },
-/* 59 */
-/***/ function(module, exports, __webpack_require__) {
-
 	/* WEBPACK VAR INJECTION */(function(process) {/**
 	 * Copyright 2013-2015, Facebook, Inc.
 	 * All rights reserved.
@@ -9459,7 +9490,7 @@
 
 	'use strict';
 
-	var PooledClass = __webpack_require__(60);
+	var PooledClass = __webpack_require__(59);
 
 	var assign = __webpack_require__(21);
 	var invariant = __webpack_require__(73);
@@ -9542,7 +9573,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(70)))
 
 /***/ },
-/* 60 */
+/* 59 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -9667,7 +9698,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(70)))
 
 /***/ },
-/* 61 */
+/* 60 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {/**
@@ -9904,6 +9935,89 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(70)))
 
 /***/ },
+/* 61 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2015, Facebook, Inc.
+	 * All rights reserved.
+	 *
+	 * This source code is licensed under the BSD-style license found in the
+	 * LICENSE file in the root directory of this source tree. An additional grant
+	 * of patent rights can be found in the PATENTS file in the same directory.
+	 *
+	 * @providesModule ReactRef
+	 */
+
+	'use strict';
+
+	var ReactOwner = __webpack_require__(125);
+
+	var ReactRef = {};
+
+	function attachRef(ref, component, owner) {
+	  if (typeof ref === 'function') {
+	    ref(component.getPublicInstance());
+	  } else {
+	    // Legacy ref
+	    ReactOwner.addComponentAsRefTo(component, ref, owner);
+	  }
+	}
+
+	function detachRef(ref, component, owner) {
+	  if (typeof ref === 'function') {
+	    ref(null);
+	  } else {
+	    // Legacy ref
+	    ReactOwner.removeComponentAsRefFrom(component, ref, owner);
+	  }
+	}
+
+	ReactRef.attachRefs = function (instance, element) {
+	  if (element === null || element === false) {
+	    return;
+	  }
+	  var ref = element.ref;
+	  if (ref != null) {
+	    attachRef(ref, instance, element._owner);
+	  }
+	};
+
+	ReactRef.shouldUpdateRefs = function (prevElement, nextElement) {
+	  // If either the owner or a `ref` has changed, make sure the newest owner
+	  // has stored a reference to `this`, and the previous owner (if different)
+	  // has forgotten the reference to `this`. We use the element instead
+	  // of the public this.props because the post processing cannot determine
+	  // a ref. The ref conceptually lives on the element.
+
+	  // TODO: Should this even be possible? The owner cannot change because
+	  // it's forbidden by shouldUpdateReactComponent. The ref can change
+	  // if you swap the keys of but not the refs. Reconsider where this check
+	  // is made. It probably belongs where the key checking and
+	  // instantiateReactComponent is done.
+
+	  var prevEmpty = prevElement === null || prevElement === false;
+	  var nextEmpty = nextElement === null || nextElement === false;
+
+	  return(
+	    // This has a few false positives w/r/t empty components.
+	    prevEmpty || nextEmpty || nextElement._owner !== prevElement._owner || nextElement.ref !== prevElement.ref
+	  );
+	};
+
+	ReactRef.detachRefs = function (instance, element) {
+	  if (element === null || element === false) {
+	    return;
+	  }
+	  var ref = element.ref;
+	  if (ref != null) {
+	    detachRef(ref, instance, element._owner);
+	  }
+	};
+
+	module.exports = ReactRef;
+
+/***/ },
 /* 62 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -10009,7 +10123,7 @@
 
 	'use strict';
 
-	var PooledClass = __webpack_require__(60);
+	var PooledClass = __webpack_require__(59);
 	var ReactElement = __webpack_require__(50);
 
 	var emptyFunction = __webpack_require__(80);
@@ -11105,7 +11219,7 @@
 	var ReactElement = __webpack_require__(50);
 	var ReactElementValidator = __webpack_require__(67);
 
-	var mapObject = __webpack_require__(134);
+	var mapObject = __webpack_require__(133);
 
 	/**
 	 * Create a factory that creates HTML tag elements.
@@ -11297,7 +11411,7 @@
 	var ReactCurrentOwner = __webpack_require__(8);
 
 	var canDefineProperty = __webpack_require__(101);
-	var getIteratorFn = __webpack_require__(133);
+	var getIteratorFn = __webpack_require__(134);
 	var invariant = __webpack_require__(73);
 	var warning = __webpack_require__(71);
 
@@ -11575,7 +11689,7 @@
 	var ReactPropTypeLocationNames = __webpack_require__(131);
 
 	var emptyFunction = __webpack_require__(80);
-	var getIteratorFn = __webpack_require__(133);
+	var getIteratorFn = __webpack_require__(134);
 
 	/**
 	 * Collection of methods that allow declaration and validation of props that are
@@ -12461,6 +12575,37 @@
 /* 78 */
 /***/ function(module, exports, __webpack_require__) {
 
+	/**
+	 * Copyright 2013-2015, Facebook, Inc.
+	 * All rights reserved.
+	 *
+	 * This source code is licensed under the BSD-style license found in the
+	 * LICENSE file in the root directory of this source tree. An additional grant
+	 * of patent rights can be found in the PATENTS file in the same directory.
+	 *
+	 * @providesModule quoteAttributeValueForBrowser
+	 */
+
+	'use strict';
+
+	var escapeTextContentForBrowser = __webpack_require__(26);
+
+	/**
+	 * Escapes attribute value to prevent scripting attacks.
+	 *
+	 * @param {*} value Value to escape.
+	 * @return {string} An escaped string.
+	 */
+	function quoteAttributeValueForBrowser(value) {
+	  return '"' + escapeTextContentForBrowser(value) + '"';
+	}
+
+	module.exports = quoteAttributeValueForBrowser;
+
+/***/ },
+/* 79 */
+/***/ function(module, exports, __webpack_require__) {
+
 	/* WEBPACK VAR INJECTION */(function(process) {/**
 	 * Copyright 2013-2015, Facebook, Inc.
 	 * All rights reserved.
@@ -12556,37 +12701,6 @@
 
 	module.exports = ReactDOMIDOperations;
 	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(70)))
-
-/***/ },
-/* 79 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2015, Facebook, Inc.
-	 * All rights reserved.
-	 *
-	 * This source code is licensed under the BSD-style license found in the
-	 * LICENSE file in the root directory of this source tree. An additional grant
-	 * of patent rights can be found in the PATENTS file in the same directory.
-	 *
-	 * @providesModule quoteAttributeValueForBrowser
-	 */
-
-	'use strict';
-
-	var escapeTextContentForBrowser = __webpack_require__(26);
-
-	/**
-	 * Escapes attribute value to prevent scripting attacks.
-	 *
-	 * @param {*} value Value to escape.
-	 * @return {string} An escaped string.
-	 */
-	function quoteAttributeValueForBrowser(value) {
-	  return '"' + escapeTextContentForBrowser(value) + '"';
-	}
-
-	module.exports = quoteAttributeValueForBrowser;
 
 /***/ },
 /* 80 */
@@ -12887,7 +13001,7 @@
 
 	'use strict';
 
-	var PooledClass = __webpack_require__(60);
+	var PooledClass = __webpack_require__(59);
 
 	var assign = __webpack_require__(21);
 	var getTextContentAccessor = __webpack_require__(140);
@@ -13397,7 +13511,7 @@
 
 	'use strict';
 
-	var PooledClass = __webpack_require__(60);
+	var PooledClass = __webpack_require__(59);
 
 	var assign = __webpack_require__(21);
 	var emptyFunction = __webpack_require__(80);
@@ -14081,7 +14195,7 @@
 
 	'use strict';
 
-	var ReactDOMIDOperations = __webpack_require__(78);
+	var ReactDOMIDOperations = __webpack_require__(79);
 	var LinkedValueUtils = __webpack_require__(150);
 	var ReactMount = __webpack_require__(12);
 	var ReactUpdates = __webpack_require__(15);
@@ -14530,7 +14644,7 @@
 	'use strict';
 
 	var LinkedValueUtils = __webpack_require__(150);
-	var ReactDOMIDOperations = __webpack_require__(78);
+	var ReactDOMIDOperations = __webpack_require__(79);
 	var ReactUpdates = __webpack_require__(15);
 
 	var assign = __webpack_require__(21);
@@ -17618,9 +17732,9 @@
 
 	'use strict';
 
-	var PooledClass = __webpack_require__(60);
-	var CallbackQueue = __webpack_require__(59);
-	var Transaction = __webpack_require__(61);
+	var PooledClass = __webpack_require__(59);
+	var CallbackQueue = __webpack_require__(58);
+	var Transaction = __webpack_require__(60);
 
 	var assign = __webpack_require__(21);
 	var emptyFunction = __webpack_require__(80);
@@ -17713,7 +17827,7 @@
 	var ReactElement = __webpack_require__(50);
 	var ReactInstanceHandles = __webpack_require__(11);
 
-	var getIteratorFn = __webpack_require__(133);
+	var getIteratorFn = __webpack_require__(134);
 	var invariant = __webpack_require__(73);
 	var warning = __webpack_require__(71);
 
@@ -18134,51 +18248,6 @@
 	 * LICENSE file in the root directory of this source tree. An additional grant
 	 * of patent rights can be found in the PATENTS file in the same directory.
 	 *
-	 * @providesModule getIteratorFn
-	 * @typechecks static-only
-	 */
-
-	'use strict';
-
-	/* global Symbol */
-	var ITERATOR_SYMBOL = typeof Symbol === 'function' && Symbol.iterator;
-	var FAUX_ITERATOR_SYMBOL = '@@iterator'; // Before Symbol spec.
-
-	/**
-	 * Returns the iterator method function contained on the iterable object.
-	 *
-	 * Be sure to invoke the function with the iterable as context:
-	 *
-	 *     var iteratorFn = getIteratorFn(myIterable);
-	 *     if (iteratorFn) {
-	 *       var iterator = iteratorFn.call(myIterable);
-	 *       ...
-	 *     }
-	 *
-	 * @param {?object} maybeIterable
-	 * @return {?function}
-	 */
-	function getIteratorFn(maybeIterable) {
-	  var iteratorFn = maybeIterable && (ITERATOR_SYMBOL && maybeIterable[ITERATOR_SYMBOL] || maybeIterable[FAUX_ITERATOR_SYMBOL]);
-	  if (typeof iteratorFn === 'function') {
-	    return iteratorFn;
-	  }
-	}
-
-	module.exports = getIteratorFn;
-
-/***/ },
-/* 134 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Copyright 2013-2015, Facebook, Inc.
-	 * All rights reserved.
-	 *
-	 * This source code is licensed under the BSD-style license found in the
-	 * LICENSE file in the root directory of this source tree. An additional grant
-	 * of patent rights can be found in the PATENTS file in the same directory.
-	 *
 	 * @providesModule mapObject
 	 */
 
@@ -18222,6 +18291,51 @@
 	}
 
 	module.exports = mapObject;
+
+/***/ },
+/* 134 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * Copyright 2013-2015, Facebook, Inc.
+	 * All rights reserved.
+	 *
+	 * This source code is licensed under the BSD-style license found in the
+	 * LICENSE file in the root directory of this source tree. An additional grant
+	 * of patent rights can be found in the PATENTS file in the same directory.
+	 *
+	 * @providesModule getIteratorFn
+	 * @typechecks static-only
+	 */
+
+	'use strict';
+
+	/* global Symbol */
+	var ITERATOR_SYMBOL = typeof Symbol === 'function' && Symbol.iterator;
+	var FAUX_ITERATOR_SYMBOL = '@@iterator'; // Before Symbol spec.
+
+	/**
+	 * Returns the iterator method function contained on the iterable object.
+	 *
+	 * Be sure to invoke the function with the iterable as context:
+	 *
+	 *     var iteratorFn = getIteratorFn(myIterable);
+	 *     if (iteratorFn) {
+	 *       var iterator = iteratorFn.call(myIterable);
+	 *       ...
+	 *     }
+	 *
+	 * @param {?object} maybeIterable
+	 * @return {?function}
+	 */
+	function getIteratorFn(maybeIterable) {
+	  var iteratorFn = maybeIterable && (ITERATOR_SYMBOL && maybeIterable[ITERATOR_SYMBOL] || maybeIterable[FAUX_ITERATOR_SYMBOL]);
+	  if (typeof iteratorFn === 'function') {
+	    return iteratorFn;
+	  }
+	}
+
+	module.exports = getIteratorFn;
 
 /***/ },
 /* 135 */

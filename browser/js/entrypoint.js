@@ -17,9 +17,9 @@ let matrixB = new LedMatrix(NUM_ROWS, ROW_LENGTH);
 
 var speedBars = new SpeedBars(
     matrixA.submatrix([0], range(0, matrixA.numCols)),
-    matrixA.submatrix([1,2,3,4], range(0, matrixA.numCols)),
-    matrixA.submatrix([5,6,7,8], range(0, matrixA.numCols)),
-    matrixA.submatrix([9], range(0, matrixA.numCols)),
+    matrixA.submatrix([1,2], range(0, matrixA.numCols)),
+    matrixA.submatrix([3,4], range(0, matrixA.numCols)),
+    matrixA.submatrix([5], range(0, matrixA.numCols)),
 );
 
 var scrollingText = new ScrollingText(matrixB.submatrix([2,3,4,5,6,7,8], range(0, matrixB.numCols)));
