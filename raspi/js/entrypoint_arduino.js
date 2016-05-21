@@ -13,9 +13,9 @@ scrollingText.setText('vrijeschool mareland');
 
 var speedBars = new SpeedBars(
     matrix.submatrix([0], range(0, matrix.numCols)),
-    matrix.submatrix([1,2,3,4], range(0, matrix.numCols)),
-    matrix.submatrix([5,6,7,8], range(0, matrix.numCols)),
-    matrix.submatrix([9], range(0, matrix.numCols)),
+    matrix.submatrix([1,2], range(0, matrix.numCols)),
+    matrix.submatrix([3,4], range(0, matrix.numCols)),
+    matrix.submatrix([5], range(0, matrix.numCols)),
 );
 
 

@@ -111,7 +111,7 @@ export class SpeedBars {
         var cycle = (elapsed % 6000) / 6000;
         [this.barA, this.barB, this.maxBarA, this.maxBarB].forEach((bar) => {
             bar.forEachCell((rowIdx, colIdx, led) => {
-                led.setHSL(cycle, 1, 0.2 + 0.3 * Math.abs(Math.sin(cycle * 7 * Math.PI)));
+                led.setHSL(cycle, 1, 0.1 + 0.4 * Math.abs(Math.sin(cycle * 7 * Math.PI)));
             });
         });
     }
@@ -207,7 +207,7 @@ export class SpeedBars {
             this.startRace();
         }
         if (this.raceStarted) {
-        this.bars[btnIdx] += 0.1;
+            this.bars[btnIdx] += 0.07;
             this.space[btnIdx] += 0.02;
             if (this.space[btnIdx] > 1) {
                 this.space[btnIdx] = 1;
